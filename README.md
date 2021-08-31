@@ -3,7 +3,7 @@ Mongoose Delete Plugin
 
 mongoose-delete is simple and lightweight plugin that enables soft deletion of documents in MongoDB. This code is based on [riyadhalnur's](https://github.com/riyadhalnur) plugin [mongoose-softdelete](https://github.com/riyadhalnur/mongoose-softdelete).
 
-[![Build Status](https://travis-ci.org/dsanel/mongoose-delete.svg?branch=master)](https://travis-ci.org/dsanel/mongoose-delete)
+[![Build Status](https://github.com/dsanel/mongoose-delete/workflows/Test/badge.svg)](https://github.com/dsanel/mongoose-delete/actions/workflows/test.yml)
 
 ## Features
   - [Add __delete()__ method on document (do not override standard __remove()__ method)](#simple-usage)
@@ -11,11 +11,13 @@ mongoose-delete is simple and lightweight plugin that enables soft deletion of d
   - [Add __deleted__ (true-false) key on document](#simple-usage)
   - [Add __deletedAt__ key to store time of deletion](#save-time-of-deletion)
   - [Add __deletedBy__ key to record who deleted document](#who-has-deleted-the-data)
+  - [Add __deletedId__ key to record operation that included this deletion](#track-deletion-action-id)
   - Restore deleted documents using __restore__ method
   - [Bulk delete and restore](#bulk-delete-and-restore)
   - [Option to override static methods](#examples-how-to-override-one-or-multiple-methods) (__count, countDocuments, find, findOne, findOneAndUpdate, update, updateOne, updateMany__)
   - [For overridden methods we have two additional methods](#method-overridden): __methodDeleted__ and __methodWithDeleted__
   - [Disable model validation on delete](#disable-model-validation-on-delete)
+  - [Disable model validation on restore](#disable-model-validation-on-restore)
   - [Option to create index on delete fields](#create-index-on-fields) (__deleted__, __deletedAt__, __deletedBy__)
   - Option to disable use of `$ne` operator using `{use$neOperator: false}`. Before you start to use this option please check [#50](https://github.com/dsanel/mongoose-delete/issues/50).
   - Option to override **aggregate**.
@@ -26,6 +28,31 @@ Install using [npm](https://npmjs.org)
 ```
 npm install mongoose-delete
 ```
+## TypeScript support
+
+The plugin currently does not have its own type definition. Please be free to use [@types/mongoose-delete](https://www.npmjs.com/package/@types/mongoose-delete).
+
+In doing so, you should make use of the `SoftDeleteModel` type, instead of the `Model` type.
+
+```typescript
+import { Schema, model, connect } from 'mongoose';
+import { SoftDeleteModel }, MongooseDelete from 'mongoose-delete';
+
+interface Pet extends SoftDeleteDocument {
+  name: string;
+}
+
+const PetSchema = new Schema<Pet>({
+    name: String
+});
+
+PetSchema.plugin(MongooseDelete, { deletedBy: true, deletedByType: String });
+
+const model: SoftDeleteModel = model<Pet>('Pet', PetSchema);
+
+export default model;
+```
+
 ## Usage
 
 We can use this plugin with or without options.
@@ -163,6 +190,118 @@ fluffy.save(function () {
 });
 ```
 
+### Track deletion action ID
+
+The `deletedId` can be used to track items that were deleted as part of a single operation.
+
+```javascript
+var mongoose_delete = require('mongoose-delete');
+
+var PetSchema = new Schema({
+    name: String
+});
+
+PetSchema.plugin(mongoose_delete, { deletedId: true });
+
+var Pet = mongoose.model('Pet', PetSchema);
+
+async function example() {
+  try {
+    // Create two pets
+    const fluffy = new Pet({ name: 'Fluffy' });
+    const bitey = new Pet({ name: 'Bitey' });
+
+    // Create a shared action ID for grouping the deletions
+    const actionId = new mongoose.Types.ObjectId("61fc42a56b4a6670076b16bf");
+
+    // Delete both pets with the same actionId
+    // This allows tracking which documents were deleted in the same operation
+    await Promise.all([
+      fluffy.delete({ deletedId: actionId }),
+      bitey.delete({ deletedId: actionId })
+    ]);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    
+    // Find all pets deleted as part of this action
+    const deletedPets = await Pet.findWithDeleted({ deletedId: actionId });
+    console.log(`Found ${deletedPets.length} pets deleted in this action`);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    
+    // Restore each pet individually
+    console.log('Restoring each pet individually...');
+    for (const pet of deletedPets) {
+        await pet.restore();
+        console.log(`Restored pet: ${pet.name}`);
+    }
+    // mongodb: { deleted: false, name: 'Fluffy' }
+    // mongodb: { deleted: false, name: 'Bitey' }   
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+example();
+
+```
+
+The type for deletedId is ObjectId by default, but you can set a custom type:
+
+```javascript
+var mongoose_delete = require('mongoose-delete');
+
+var PetSchema = new Schema({
+    name: String
+});
+
+PetSchema.plugin(mongoose_delete, { deletedId: true, deletedIdType: String });
+
+var Pet = mongoose.model('Pet', PetSchema);
+
+async function example() {
+  try {
+    // Create two pets
+    const fluffy = new Pet({ name: 'Fluffy' });
+    const bitey = new Pet({ name: 'Bitey' });
+
+    // Create a shared action ID for grouping the deletions which is a string
+    const actionId = 'action-123';
+
+    // Delete both pets with the same actionId
+    // This allows tracking which documents were deleted in the same operation
+    await Promise.all([
+      fluffy.delete({ deletedId: actionId }),
+      bitey.delete({ deletedId: actionId })
+    ]);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123'}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: 'action-123'}
+    
+    // Find all pets deleted as part of this action
+    const deletedPets = await Pet.findWithDeleted({ deletedId: actionId });
+    console.log(`Found ${deletedPets.length} pets deleted in this action`);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123'}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: 'action-123'}
+    
+    // Restore each pet individually
+    console.log('Restoring each pet individually...');
+    for (const pet of deletedPets) {
+        await pet.restore();
+        console.log(`Restored pet: ${pet.name}`);
+    }
+    // mongodb: { deleted: false, name: 'Fluffy' }
+    // mongodb: { deleted: false, name: 'Bitey' }   
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+example();
+
+```
+
 ### Bulk delete and restore
 
 ```javascript
@@ -204,17 +343,20 @@ Pet.restore({age:10}).exec(function (err, result) { ... });
 
 We have the option to override all standard methods or only specific methods. Overridden methods will exclude deleted documents from results, documents that have ```deleted = true```. Every overridden method will have two additional methods, so we will be able to work with deleted documents.
 
-| only not deleted documents | only deleted documents  | all documents               |
-|----------------------------|-------------------------|-----------------------------|
-| count()                    | countDeleted            | countWithDeleted            |
-| countDocuments()           | countDocumentsDeleted   | countDocumentsWithDeleted   |
-| find()                     | findDeleted             | findWithDeleted             |
-| findOne()                  | findOneDeleted          | findOneWithDeleted          |
-| findOneAndUpdate()         | findOneAndUpdateDeleted | findOneAndUpdateWithDeleted |
-| update()                   | updateDeleted           | updateWithDeleted           |
-| updateOne()                | updateOneDeleted        | updateOneWithDeleted        |
-| updateMany()               | updateManyDeleted       | updateManyWithDeleted       |
-| aggregate()                | aggregateDeleted        | aggregateWithDeleted        |
+| only not deleted documents | only deleted documents             | all documents                          |
+|----------------------------|------------------------------------|----------------------------------------|
+| count()                    | countDeleted                       | countWithDeleted                       |
+| countDocuments()           | countDocumentsDeleted              | countDocumentsWithDeleted              |
+| find()                     | findDeleted                        | findWithDeleted                        |
+| findOne()                  | findOneDeleted                     | findOneWithDeleted                     |
+| findOneAndUpdate()         | findOneAndUpdateDeleted            | findOneAndUpdateWithDeleted            |
+| update()                   | updateDeleted                      | updateWithDeleted                      |
+| updateOne()                | updateOneDeleted                   | updateOneWithDeleted                   |
+| updateMany()               | updateManyDeleted                  | updateManyWithDeleted                  |
+| aggregate()                | aggregateDeleted                   | aggregateWithDeleted                   |
+| findById()                 | Please use findOne                 | Please use findOneWithDeleted          |
+| findByIdAndUpdate()        | Please use findOneAndUpdateDeleted | Please use findOneAndUpdateWithDeleted |
+
 
 ### Examples how to override one or multiple methods
 
@@ -227,7 +369,7 @@ var PetSchema = new Schema({
 
 // Override all methods
 PetSchema.plugin(mongoose_delete, { overrideMethods: 'all' });
-// or 
+// or
 PetSchema.plugin(mongoose_delete, { overrideMethods: true });
 
 // Overide only specific methods
@@ -278,6 +420,29 @@ PetSchema.plugin(mongoose_delete, { validateBeforeDelete: false });
 
 ```
 
+### Disable model validation on restore
+
+```javascript
+var mongoose_delete = require('mongoose-delete');
+
+var PetSchema = new Schema({
+    name: { type: String, required: true }
+});
+
+// By default, validateBeforeRestore is set to true
+PetSchema.plugin(mongoose_delete);
+// the previous line is identical to next line
+PetSchema.plugin(mongoose_delete, { validateBeforeRestore: true });
+
+// To disable model validation on restore, set validateBeforeRestore option to false
+PetSchema.plugin(mongoose_delete, { validateBeforeRestore: false });
+
+// NOTE: This is based on existing Mongoose validateBeforeSave option
+// http://mongoosejs.com/docs/guide.html#validateBeforeSave
+```
+
+
+
 ### Create index on fields
 
 ```javascript
@@ -289,7 +454,7 @@ var PetSchema = new Schema({
 
 // Index all field related to plugin (deleted, deletedAt, deletedBy)
 PetSchema.plugin(mongoose_delete, { indexFields: 'all' });
-// or 
+// or
 PetSchema.plugin(mongoose_delete, { indexFields: true });
 
 // Index only specific fields

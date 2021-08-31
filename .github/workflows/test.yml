@@ -1,0 +1,29 @@
+name: Test
+on: push
+
+jobs:
+  run-checks:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        node-version: [18, 20, 22]
+        mongodb-version: ['7.0.21', '8.0.11']        
+    name: Node ${{ matrix.node }} MongoDB ${{ matrix.mongodb-version }}
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v3
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Install dependencies
+      run: npm install
+    - name: Start MongoDB
+      uses: supercharge/mongodb-github-action@1.8.0
+      with:
+          mongodb-version: ${{ matrix.mongodb-version }}
+    - name: Test
+      run: npm run test
