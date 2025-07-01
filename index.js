@@ -260,6 +260,10 @@ module.exports = function (schema, options) {
             this.deletedId = params.deletedId
         }
 
+        if (schema.path('deletedId')) {
+            this.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+        }
+
         if (options.validateBeforeDelete === false) {
             return this.save({ validateBeforeSave: false }, cb);
         }
@@ -286,6 +290,7 @@ module.exports = function (schema, options) {
             doc.deletedAt = new Date();
         }
 
+
         if (schema.path('deletedBy')) {
             doc.deletedBy = params.deletedBy;
         }
@@ -293,6 +298,11 @@ module.exports = function (schema, options) {
         if (schema.path('deletedId')) {
             doc.deletedId = params.deletedId 
         }
+
+        if (schema.path('deletedId')) {
+            doc.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+        }
+
 
         return updateDocumentsByQuery(this, conditions, doc, callback);
     };
