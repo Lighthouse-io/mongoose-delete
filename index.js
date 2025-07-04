@@ -236,22 +236,14 @@ module.exports = function (schema, options) {
     }
 
     schema.methods.delete = function (params = {}, cb) {
-        let deletedBy = null;
-        let deletedId = null;
-
         if (typeof params === 'function') {
             cb = params;
         }
 
         // If options is a string or ObjectId, it's the deletedBy value
         if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
-            deletedBy = params;
-            params = { deletedBy };
+            params = { deletedBy: params };
         } 
-        
-        if (params.deletedId) {
-            deletedId = params.deletedId;
-        }
 
         this.deleted = true;
 
@@ -260,11 +252,11 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedBy')) {
-            this.deletedBy = deletedBy;
+            this.deletedBy = params.deletedBy;
         }
 
         if (schema.path('deletedId')) {
-            this.deletedId = deletedId
+            this.deletedId = params.deletedId
         }
 
         if (options.validateBeforeDelete === false) {
@@ -275,22 +267,14 @@ module.exports = function (schema, options) {
     };
 
     schema.statics.delete =  function (conditions, params = {}, callback) {
-        let deletedBy = null;
-        let deletedId = null;
-
         if (typeof params === 'function') {
             callback = params;
         } else if (typeof conditions === 'function') {
             callback = conditions;
             conditions = {};
         } else if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
-            deletedBy = params;
-            params = { deletedBy };
+            params = { deletedBy: params };
         } 
-
-        if (params.deletedId) {
-            deletedId = params.deletedId;
-        }
 
         var doc = {
             deleted: true
@@ -300,13 +284,12 @@ module.exports = function (schema, options) {
             doc.deletedAt = new Date();
         }
 
-
         if (schema.path('deletedBy')) {
-            doc.deletedBy = deletedBy;
+            doc.deletedBy = params.deletedBy;
         }
 
         if (schema.path('deletedId')) {
-            doc.deletedId = deletedId 
+            doc.deletedId = params.deletedId 
         }
 
 
