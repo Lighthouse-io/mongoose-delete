@@ -20,7 +20,7 @@
     "remove",
     "plugin"
   ],
-  "license": "MIT",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/Lighthouse-io/mongoose-delete/issues"
   },
