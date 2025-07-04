@@ -550,12 +550,12 @@ describe("mongoose_delete with options: { deletedBy : true, deletedByType: Strin
 
 describe("mongoose_delete with options: { deletedId : true }", function () {
 
-    var deletedIdSchema1 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_1'});
+    const deletedIdSchema1 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_1'});
     deletedIdSchema1.plugin(mongoose_delete, { deletedId: true });
-    var TestDeletedId1 = mongoose.model('TestDeletedId1', deletedIdSchema1);
+    const TestDeletedId1 = mongoose.model('TestDeletedId1', deletedIdSchema1);
 
-    var puffy1 = null;
-    var puffy2 = null;
+    let puffy1 = null;
+    let puffy2 = null;
 
     beforeEach(async function () {
         const created = await TestDeletedId1.create(
@@ -574,19 +574,19 @@ describe("mongoose_delete with options: { deletedId : true }", function () {
         await mongoose.connection.db.dropCollection("mongoose_delete_test_deleted_id_1");
     });
 
-    var userId = getNewObjectId("53da93b16b4a6670076b16bf");
+    const actionId = getNewObjectId("53da93b16b4a6670076b16bf");
 
     it("delete() -> should save 'deletedId' key", async function () {
         try {
             const puffy = await TestDeletedId1.findOne({ name: 'Puffy1' });
-            const success = await puffy.delete( {deletedId: userId});
-            success.deletedId.toString().should.equal(userId.toString());
+            const success = await puffy.delete({ deletedId: actionId });
+            success.deletedId.toString().should.equal(actionId.toString());
         } catch (err) {
             should.not.exist(err);
         }
     });
 
-    it("restore() -> should set deleted:false and delete `deletedBy` key", async function () {
+    it("restore() -> should set deleted:false and delete `deletedId` key", async function () {
         try {
             const puffy = await TestDeletedId1.findOne({ name: 'Puffy3' });
             const success = await puffy.restore();
@@ -600,12 +600,12 @@ describe("mongoose_delete with options: { deletedId : true }", function () {
 
 describe("mongoose_delete with options: { deletedId : true }, using option: typeKey", function () {
 
-    var deletedIdSchema2 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_2', typeKey: '$type'});
+    const deletedIdSchema2 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_2', typeKey: '$type'});
     deletedIdSchema2.plugin(mongoose_delete, { deletedId: true });
-    var TestDeletedId2 = mongoose.model('TestDeletedId2', deletedIdSchema2);
+    const TestDeletedId2 = mongoose.model('TestDeletedId2', deletedIdSchema2);
 
-    var puffy1 = null;
-    var puffy2 = null;
+    let puffy1 = null;
+    let puffy2 = null;
 
     beforeEach(async function () {
         const created = await TestDeletedId2.create(
@@ -624,19 +624,19 @@ describe("mongoose_delete with options: { deletedId : true }, using option: type
         await mongoose.connection.db.dropCollection("mongoose_delete_test_deleted_id_2");
     });
 
-    var userId = getNewObjectId("53da93b16b4a6670076b16bf")
+    const actionId = getNewObjectId("53da93b16b4a6670076b16bf")
 
     it("delete() -> should save `deletedId` key", async function () {
         try {
             const puffy = await TestDeletedId2.findOne({name: 'Puffy1'});
-            const success = await puffy.delete( {deletedId: userId});
-            success.deletedId.toString().should.equal(userId.toString());
+            const success = await puffy.delete( {deletedId: actionId} );
+            success.deletedId.toString().should.equal(actionId.toString());
         } catch (err) {
             should.not.exist(err);
         }
     });
 
-    it("restore() -> should set deleted:false and delete deletedBy key", async function () {
+    it("restore() -> should set deleted:false and delete deletedId key", async function () {
         try {
             const puffy = await TestDeletedId2.findOne({name: 'Puffy3'});
             const success = await puffy.restore();
@@ -650,12 +650,12 @@ describe("mongoose_delete with options: { deletedId : true }, using option: type
 
 describe("mongoose_delete with options: { deletedId : true, deletedIdType: String }", function () {
 
-    var deletedIdSchema3 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_3'});
+    const deletedIdSchema3 = new Schema({name: String}, {collection: 'mongoose_delete_test_deleted_id_3'});
     deletedIdSchema3.plugin(mongoose_delete, { deletedId: true, deletedIdType: String });
-    var TestDeletedId3 = mongoose.model('TestDeletedId3', deletedIdSchema3);
+    const TestDeletedId3 = mongoose.model('TestDeletedId3', deletedIdSchema3);
 
-    var puffy1 = null;
-    var puffy2 = null;
+    let puffy1 = null;
+    let puffy2 = null;
 
     beforeEach(async function () {
         const created = await TestDeletedId3.create(
@@ -674,20 +674,20 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
         await mongoose.connection.db.dropCollection("mongoose_delete_test_deleted_id_3");
     });
 
-    var userIdCustom = "custom_user_id_12345678";
+    const actionIdCustom = "custom_user_id_12345678";
 
     it("delete() -> should save deletedBy key", async function () {
         try {
             const puffy = await TestDeletedId3.findOne({name: 'Puffy1'});
-            const success = await puffy.delete( {deletedId: userIdCustom});
-            success.deletedId.toString().should.equal(userIdCustom.toString());
+            const success = await puffy.delete( {deletedId: actionIdCustom} );
+            success.deletedId.toString().should.equal(actionIdCustom.toString());
         } catch (err) {
             console.log(err);
             should.not.exist(err);
         }
     });
 
-    it("restore() -> should set deleted:false and delete deletedBy key", async function () {
+    it("restore() -> should set deleted:false and delete deletedId key", async function () {
         try {
             const puffy = await TestDeletedId3.findOne({ name: 'Puffy3' });
             const success = await puffy.restore();

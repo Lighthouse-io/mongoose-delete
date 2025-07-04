@@ -1,8 +1,8 @@
 {
   "name": "mongoose-delete",
-  "version": "1.0.2",
+  "version": "1.1.0-canary-1",
   "description": "Mongoose soft delete plugin",
-  "author": "Sanel Deljkic <dsanel@gmail.com> (http://dsanel.github.io/)",
+  "author": "Tahera Shorna",
   "main": "index.js",
   "scripts": {
     "test": "mocha",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:dsanel/mongoose-delete.git"
+    "url": "git@github.com:Lighthouse-io/mongoose-delete.git"
   },
   "keywords": [
     "mongoose",
@@ -22,9 +22,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/dsanel/mongoose-delete/issues"
+    "url": "https://github.com/Lighthouse-io/mongoose-delete/issues"
   },
-  "homepage": "https://github.com/dsanel/mongoose-delete",
+  "homepage": "https://github.com/Lighthouse-io/mongoose-delete",
   "peerDependencies": {
     "mongoose": "5.x || 6.x || 7.x || 8.x"
   },

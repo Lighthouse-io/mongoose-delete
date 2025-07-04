@@ -105,9 +105,9 @@ module.exports = function (schema, options) {
         schema.add({ deletedBy: createSchemaObject(typeKey, options.deletedByType || Schema.Types.ObjectId, { index: indexFields.deletedBy }) });
     }
 
-   if (options.deletedId === true) {
-    schema.add({ deletedId: createSchemaObject(typeKey, options.deletedIdType || Schema.Types.ObjectId, { index: indexFields.deletedId }) });
-}
+    if (options.deletedId === true) {
+        schema.add({ deletedId: createSchemaObject(typeKey, options.deletedIdType || Schema.Types.ObjectId, { index: indexFields.deletedId }) });
+    }
 
     var use$neOperator = true;
     if (options.use$neOperator !== undefined && typeof options.use$neOperator === "boolean") {
@@ -235,30 +235,28 @@ module.exports = function (schema, options) {
         });
     }
 
-    schema.methods.delete = function (params, cb) {
+    schema.methods.delete = function (params = {}, cb) {
         let deletedBy = null;
         let deletedId = null;
 
         if (typeof params === 'function') {
-          cb = params;
-          params = {};
+            cb = params;
+            params = {};
         }
 
         // If options is a string or ObjectId, it's the deletedBy value
-        if (typeof params === 'string' || typeof params === 'object' && !params.deletedId ||  (params && params._bsontype === 'ObjectID')) {
+        if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             deletedBy = params;
-            params = {};
-        } else if (!params) {
-            params = {};
-        }
+            params = { deletedBy };
+        } 
         
         // Extract deletedId and deletedBy from options if present
         if (params.deletedId) {
-        deletedId = params.deletedId;
+            deletedId = params.deletedId;
         }
         
         if (params.deletedBy) {
-        deletedBy = params.deletedBy;
+            deletedBy = params.deletedBy;
         }
 
         this.deleted = true;
@@ -272,7 +270,7 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            this.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+            this.deletedId = deletedId
         }
 
         if (options.validateBeforeDelete === false) {
@@ -282,10 +280,9 @@ module.exports = function (schema, options) {
         return this.save(cb);
     };
 
-    schema.statics.delete =  function (conditions, params, callback) {
+    schema.statics.delete =  function (conditions, params = {}, callback) {
         let deletedBy = null;
         let deletedId = null;
-
 
         if (typeof params === 'function') {
             callback = params;
@@ -294,12 +291,10 @@ module.exports = function (schema, options) {
             callback = conditions;
             conditions = {};
             params = {};
-        } else if (typeof params === 'string' || typeof params === 'object' || (params && params._bsontype === 'ObjectID')) {
+        } else if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             deletedBy = params;
-            params = {};
-        } else if (!params) {
-            params = {};
-        }
+            params = { deletedBy };
+        } 
 
         // Extract deletedId and deletedBy
         if (params.deletedId) {
@@ -324,14 +319,14 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            doc.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+            doc.deletedId = deletedId 
         }
 
 
         return updateDocumentsByQuery(this, conditions, doc, callback);
     };
 
-    schema.statics.deleteById =  function (id, params, callback) {
+    schema.statics.deleteById =  function (id, params = {}, callback) {
         if (arguments.length === 0 || typeof id === 'function') {
             var msg = 'First argument is mandatory and must not be a function.';
             throw new TypeError(msg);
