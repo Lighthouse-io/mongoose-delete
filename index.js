@@ -244,10 +244,6 @@ module.exports = function (schema, options) {
         if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             params = { deletedBy: params };
         } 
-        
-        if (params.deletedId) {
-            deletedId = params.deletedId;
-        }
 
         this.deleted = true;
 
@@ -264,7 +260,7 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            this.deletedId = deletedId
+            this.deletedId = params.deletedId
         }
 
         if (options.validateBeforeDelete === false) {
@@ -284,10 +280,6 @@ module.exports = function (schema, options) {
             params = { deletedBy: params };
         } 
 
-        if (params.deletedId) {
-            deletedId = params.deletedId;
-        }
-
         var doc = {
             deleted: true
         };
@@ -295,7 +287,6 @@ module.exports = function (schema, options) {
         if (schema.path('deletedAt')) {
             doc.deletedAt = new Date();
         }
-
 
         if (schema.path('deletedBy')) {
             doc.deletedBy = params.deletedBy;
@@ -306,7 +297,7 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            doc.deletedId = deletedId 
+            doc.deletedId = params.deletedId 
         }
 
 
