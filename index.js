@@ -238,13 +238,16 @@ module.exports = function (schema, options) {
     schema.methods.delete = function (params = {}, cb) {
         if (typeof params === 'function') {
             cb = params;
-            params = {};
         }
 
         // If options is a string or ObjectId, it's the deletedBy value
         if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             params = { deletedBy: params };
         } 
+        
+        if (params.deletedId) {
+            deletedId = params.deletedId;
+        }
 
         this.deleted = true;
 
@@ -274,13 +277,16 @@ module.exports = function (schema, options) {
     schema.statics.delete =  function (conditions, params = {}, callback) {
         if (typeof params === 'function') {
             callback = params;
-            params = {};
         } else if (typeof conditions === 'function') {
             callback = conditions;
             conditions = {};
         } else if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             params = { deletedBy: params };
         } 
+
+        if (params.deletedId) {
+            deletedId = params.deletedId;
+        }
 
         var doc = {
             deleted: true
