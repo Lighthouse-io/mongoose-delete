@@ -241,7 +241,6 @@ module.exports = function (schema, options) {
 
         if (typeof params === 'function') {
             cb = params;
-            params = {};
         }
 
         // If options is a string or ObjectId, it's the deletedBy value
@@ -250,13 +249,8 @@ module.exports = function (schema, options) {
             params = { deletedBy };
         } 
         
-        // Extract deletedId and deletedBy from options if present
         if (params.deletedId) {
             deletedId = params.deletedId;
-        }
-        
-        if (params.deletedBy) {
-            deletedBy = params.deletedBy;
         }
 
         this.deleted = true;
@@ -286,23 +280,16 @@ module.exports = function (schema, options) {
 
         if (typeof params === 'function') {
             callback = params;
-            params = {};
         } else if (typeof conditions === 'function') {
             callback = conditions;
             conditions = {};
-            params = {};
         } else if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
             deletedBy = params;
             params = { deletedBy };
         } 
 
-        // Extract deletedId and deletedBy
         if (params.deletedId) {
             deletedId = params.deletedId;
-        }
-        
-        if (params.deletedBy) {
-            deletedBy = params.deletedBy ;
         }
 
         var doc = {
