@@ -261,7 +261,7 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            this.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+            this.deletedId = deletedId
         }
 
         if (options.validateBeforeDelete === false) {
@@ -300,7 +300,7 @@ module.exports = function (schema, options) {
         }
 
         if (schema.path('deletedId')) {
-            doc.deletedId = deletedId || deletedBy; // Use deletedId if provided, fall back to deletedBy
+            doc.deletedId = deletedId 
         }
 
 
