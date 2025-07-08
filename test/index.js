@@ -682,7 +682,6 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
             const success = await puffy.delete( {deletedId: actionIdCustom} );
             success.deletedId.toString().should.equal(actionIdCustom.toString());
         } catch (err) {
-            console.log(err);
             should.not.exist(err);
         }
     });
