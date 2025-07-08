@@ -662,7 +662,7 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
           [
               { name: 'Puffy1' },
               { name: 'Puffy2' },
-              { name: 'Puffy3', deleted: true, deletedBy: "custom_user_id_12345678" }
+              { name: 'Puffy3', deleted: true, deletedId: "delete_asset_group_5678" }
           ]
         );
 
@@ -674,9 +674,9 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
         await mongoose.connection.db.dropCollection("mongoose_delete_test_deleted_id_3");
     });
 
-    const actionIdCustom = "custom_user_id_12345678";
+    const actionIdCustom = "delete_asset_group_1234";
 
-    it("delete() -> should save deletedBy key", async function () {
+    it("delete() -> should save deletedId key", async function () {
         try {
             const puffy = await TestDeletedId3.findOne({name: 'Puffy1'});
             const success = await puffy.delete( {deletedId: actionIdCustom} );
