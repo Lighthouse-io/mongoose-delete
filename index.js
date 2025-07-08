@@ -238,6 +238,7 @@ module.exports = function (schema, options) {
     schema.methods.delete = function (params = {}, cb) {
         if (typeof params === 'function') {
             cb = params;
+            params = {};
         }
 
         // If options is a string or ObjectId, it's the deletedBy value
@@ -273,6 +274,7 @@ module.exports = function (schema, options) {
     schema.statics.delete =  function (conditions, params = {}, callback) {
         if (typeof params === 'function') {
             callback = params;
+            params = {};
         } else if (typeof conditions === 'function') {
             callback = conditions;
             conditions = {};
