@@ -11,7 +11,7 @@ mongoose-delete is simple and lightweight plugin that enables soft deletion of d
   - [Add __deleted__ (true-false) key on document](#simple-usage)
   - [Add __deletedAt__ key to store time of deletion](#save-time-of-deletion)
   - [Add __deletedBy__ key to record who deleted document](#who-has-deleted-the-data)
-  - [Add __deletedId__ key to store reference to action/event that caused deletion](#track-deletion-action-id)
+  - [Add __deletedId__ key to record operation that included this deletion](#track-deletion-action-id)
   - Restore deleted documents using __restore__ method
   - [Bulk delete and restore](#bulk-delete-and-restore)
   - [Option to override static methods](#examples-how-to-override-one-or-multiple-methods) (__count, countDocuments, find, findOne, findOneAndUpdate, update, updateOne, updateMany__)
