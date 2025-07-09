@@ -192,6 +192,8 @@ fluffy.save(function () {
 
 ### Track deletion action ID
 
+The `deletedId` can be used to track items that were deleted as part of a single operation.
+
 ```javascript
 var mongoose_delete = require('mongoose-delete');
 
