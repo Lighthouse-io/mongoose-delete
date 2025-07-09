@@ -1,9 +1,6 @@
 name: Test
 on: push
 
-env:
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
 jobs:
   run-checks:
     runs-on: ${{ matrix.os }}
@@ -11,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-24.04]
-        node: [18, 20, 22]
+        node-version: [18, 20, 22]
         mongodb-version: ['7.0.21', '8.0.11']        
     name: Node ${{ matrix.node }} MongoDB ${{ matrix.mongodb-version }}
     steps:
@@ -22,9 +19,6 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - name: Add .npmrc
-      run: echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}>> .npmrc
-      shell: bash
     - name: Install dependencies
       run: npm install
     - name: Start MongoDB
