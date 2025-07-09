@@ -8,11 +8,11 @@ jobs:
   run-checks:
     runs-on: ${{ matrix.os }}
     strategy:
-    fail-fast: false
-    matrix:
-      os: [ubuntu-22, ubuntu-24]
-      node: [18, 20, 22]
-      mongodb-version: ['7.0.21', '8.0.11']        
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+        node: [18, 20, 22]
+        mongodb-version: ['7.0.21', '8.0.11']        
     name: Node ${{ matrix.node }} MongoDB ${{ matrix.mongodb-version }}
     steps:
     - name: Git checkout
