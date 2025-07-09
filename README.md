@@ -205,22 +205,46 @@ PetSchema.plugin(mongoose_delete, { deletedId: true });
 
 var Pet = mongoose.model('Pet', PetSchema);
 
-var fluffy = new Pet({ name: 'Fluffy' });
+async function example() {
+  try {
+    // Create two pets
+    const fluffy = new Pet({ name: 'Fluffy' });
+    const bitey = new Pet({ name: 'Bitey' });
 
-fluffy.save(function () {
+    // Create a shared action ID for grouping the deletions
+    const actionId = new mongoose.Types.ObjectId("61fc42a56b4a6670076b16bf");
+
+    // Delete both pets with the same actionId
+    // This allows tracking which documents were deleted in the same operation
+    await Promise.all([
+      fluffy.delete({ deletedId: actionId }),
+      bitey.delete({ deletedId: actionId })
+    ]);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    
+    // Find all pets deleted as part of this action
+    const deletedPets = await Pet.findWithDeleted({ deletedId: actionId });
+    console.log(`Found ${deletedPets.length} pets deleted in this action`);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+    
+    // Restore each pet individually
+    console.log('Restoring each pet individually...');
+    for (const pet of deletedPets) {
+        await pet.restore();
+        console.log(`Restored pet: ${pet.name}`);
+    }
     // mongodb: { deleted: false, name: 'Fluffy' }
+    // mongodb: { deleted: false, name: 'Bitey' }   
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
 
-    var actionId = mongoose.Types.ObjectId("61fc42a56b4a6670076b16bf");
+example();
 
-    // Pass deletedId as an option
-    fluffy.delete({ deletedId: actionId }, function () {
-        // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
-
-        fluffy.restore(function () {
-            // mongodb: { deleted: false, name: 'Fluffy' }
-        });
-    });
-});
 ```
 
 The type for deletedId is ObjectId by default, but you can set a custom type:
@@ -236,20 +260,46 @@ PetSchema.plugin(mongoose_delete, { deletedId: true, deletedIdType: String });
 
 var Pet = mongoose.model('Pet', PetSchema);
 
-var fluffy = new Pet({ name: 'Fluffy' });
+async function example() {
+  try {
+    // Create two pets
+    const fluffy = new Pet({ name: 'Fluffy' });
+    const bitey = new Pet({ name: 'Bitey' });
 
-fluffy.save(function () {
+    // Create a shared action ID for grouping the deletions which is a string
+    const actionId = 'action-123';
+
+    // Delete both pets with the same actionId
+    // This allows tracking which documents were deleted in the same operation
+    await Promise.all([
+      fluffy.delete({ deletedId: actionId }),
+      bitey.delete({ deletedId: actionId })
+    ]);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123'}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: 'action-123'}
+    
+    // Find all pets deleted as part of this action
+    const deletedPets = await Pet.findWithDeleted({ deletedId: actionId });
+    console.log(`Found ${deletedPets.length} pets deleted in this action`);
+    // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123'}
+    // mongodb: { deleted: true, name: 'Bitey', deletedId: 'action-123'}
+    
+    // Restore each pet individually
+    console.log('Restoring each pet individually...');
+    for (const pet of deletedPets) {
+        await pet.restore();
+        console.log(`Restored pet: ${pet.name}`);
+    }
     // mongodb: { deleted: false, name: 'Fluffy' }
+    // mongodb: { deleted: false, name: 'Bitey' }   
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
 
-    // Pass deletedId as an option
-    fluffy.delete({ deletedId: 'action-123' }, function () {
-        // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123' }
+example();
 
-        fluffy.restore(function () {
-            // mongodb: { deleted: false, name: 'Fluffy' }
-        });
-    });
-});
 ```
 
 ### Bulk delete and restore
