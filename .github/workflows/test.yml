@@ -26,4 +26,4 @@ jobs:
       with:
           mongodb-version: 4.4
     - name: Test
-      run: npm test:ci
+      run: npm run test:ci
