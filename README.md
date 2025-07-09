@@ -11,6 +11,7 @@ mongoose-delete is simple and lightweight plugin that enables soft deletion of d
   - [Add __deleted__ (true-false) key on document](#simple-usage)
   - [Add __deletedAt__ key to store time of deletion](#save-time-of-deletion)
   - [Add __deletedBy__ key to record who deleted document](#who-has-deleted-the-data)
+  - [Add __deletedId__ key to store reference to action/event that caused deletion](#track-deletion-action-id)
   - Restore deleted documents using __restore__ method
   - [Bulk delete and restore](#bulk-delete-and-restore)
   - [Option to override static methods](#examples-how-to-override-one-or-multiple-methods) (__count, countDocuments, find, findOne, findOneAndUpdate, update, updateOne, updateMany__)
@@ -181,6 +182,66 @@ fluffy.save(function () {
     // note: you should invoke exactly delete() method instead of standard fluffy.remove()
     fluffy.delete(idUser, function () {
         // mongodb: { deleted: true, name: 'Fluffy', deletedBy: 'my-custom-user-id' }
+
+        fluffy.restore(function () {
+            // mongodb: { deleted: false, name: 'Fluffy' }
+        });
+    });
+});
+```
+
+### Track deletion action ID
+
+```javascript
+var mongoose_delete = require('mongoose-delete');
+
+var PetSchema = new Schema({
+    name: String
+});
+
+PetSchema.plugin(mongoose_delete, { deletedId: true });
+
+var Pet = mongoose.model('Pet', PetSchema);
+
+var fluffy = new Pet({ name: 'Fluffy' });
+
+fluffy.save(function () {
+    // mongodb: { deleted: false, name: 'Fluffy' }
+
+    var actionId = mongoose.Types.ObjectId("61fc42a56b4a6670076b16bf");
+
+    // Pass deletedId as an option
+    fluffy.delete({ deletedId: actionId }, function () {
+        // mongodb: { deleted: true, name: 'Fluffy', deletedId: ObjectId("61fc42a56b4a6670076b16bf")}
+
+        fluffy.restore(function () {
+            // mongodb: { deleted: false, name: 'Fluffy' }
+        });
+    });
+});
+```
+
+The type for deletedId is ObjectId by default, but you can set a custom type:
+
+```javascript
+var mongoose_delete = require('mongoose-delete');
+
+var PetSchema = new Schema({
+    name: String
+});
+
+PetSchema.plugin(mongoose_delete, { deletedId: true, deletedIdType: String });
+
+var Pet = mongoose.model('Pet', PetSchema);
+
+var fluffy = new Pet({ name: 'Fluffy' });
+
+fluffy.save(function () {
+    // mongodb: { deleted: false, name: 'Fluffy' }
+
+    // Pass deletedId as an option
+    fluffy.delete({ deletedId: 'action-123' }, function () {
+        // mongodb: { deleted: true, name: 'Fluffy', deletedId: 'action-123' }
 
         fluffy.restore(function () {
             // mongodb: { deleted: false, name: 'Fluffy' }
