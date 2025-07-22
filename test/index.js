@@ -844,7 +844,7 @@ describe("mongoose_delete with session management", function () {
       // First delete a document
       const doc = await TestModel.findOne({ name: 'Obi-Wan Kenobi' });
       await doc.delete({ deletedBy: userId });
-      
+
       session.startTransaction();
       
       // Restore with session
@@ -874,11 +874,10 @@ describe("mongoose_delete with session management", function () {
       return this.skip();
     }
     
-    // First delete multiple documents
-    await TestModel.delete({ name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } });
-    
     const session = await mongoose.startSession();
     try {
+      // First delete multiple documents
+      await TestModel.delete({ name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } });
       session.startTransaction();
       
       // Restore multiple documents with session
