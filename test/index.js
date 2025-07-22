@@ -827,7 +827,6 @@ describe("mongoose_delete with session management", function () {
       const count = await TestModel.countDocuments();
       count.should.equal(3);
     } catch (err) {
-      await session.abortTransaction();
       should.not.exist(err);
     } finally {
       session.endSession();
@@ -839,12 +838,13 @@ describe("mongoose_delete with session management", function () {
       return this.skip();
     }
     
-    // First delete a document
-    const doc = await TestModel.findOne({ name: 'Obi-Wan Kenobi' });
-    await doc.delete({ deletedBy: userId });
-    
     const session = await mongoose.startSession();
-    try {
+    try {  
+
+      // First delete a document
+      const doc = await TestModel.findOne({ name: 'Obi-Wan Kenobi' });
+      await doc.delete({ deletedBy: userId });
+      
       session.startTransaction();
       
       // Restore with session
