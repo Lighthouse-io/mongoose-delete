@@ -93,6 +93,8 @@ module.exports = function (schema, options) {
             options = { multi: true };
         } else if (!options) {
             options = { multi: true };
+        } else {
+            options = { ...options, multi: true };
         }
         if (schema[mainUpdateWithDeletedMethod]) {
             return schema[mainUpdateWithDeletedMethod](conditions, updateQuery, options, callback);
@@ -196,17 +198,16 @@ module.exports = function (schema, options) {
                     schema.statics[method + 'Deleted'] = function () {
                         var args = [];
                         Array.prototype.push.apply(args, arguments);
-                        // Handle session in options (usually last argument)
-                        var options = {};
+                        var session;
                         var lastArg = arguments[arguments.length - 1];
                         if (lastArg && typeof lastArg === 'object' && lastArg.session) {
-                            options.session = lastArg.session;
+                            session = lastArg.session;
                         }
                         var match = { $match : { deleted : {'$ne': false } } };
                         arguments.length ? args[0].unshift(match) : args.push([match]);
                          // Pass the session in the options if present
-                        if (options.session) {
-                            return Model[method].apply(this, args).session(options.session);
+                        if (session) {
+                            return Model[method].apply(this, args).session(session);
                         }
                         return Model[method].apply(this, args);
                     };
@@ -214,15 +215,15 @@ module.exports = function (schema, options) {
                     schema.statics[method + 'WithDeleted'] = function () {
                         var args = [];
                         Array.prototype.push.apply(args, arguments);
-                        var options = {};
+                        var session;
                         var lastArg = arguments[arguments.length - 1];
                         if (lastArg && typeof lastArg === 'object' && lastArg.session) {
-                            options.session = lastArg.session;
+                            session = lastArg.session;
                         }
                         var match = { $match : { showAllDocuments : 'true' } };
                         arguments.length ? args[0].unshift(match) : args.push([match]);
-                        if (options.session) {
-                            return Model[method].apply(this, args).session(options.session);
+                        if (session) {
+                            return Model[method].apply(this, args).session(session);
                         }
                         return Model[method].apply(this, args);
                     };
@@ -292,10 +293,9 @@ module.exports = function (schema, options) {
             return this.save({ validateBeforeSave: false }, cb);
         }
 
-        const saveOptions = { 
-            ...options, 
-            validateBeforeSave: params.validateBeforeDelete === true
-        };
+        if(options.validateBeforeDelete === false) {
+            saveOptions.validateBeforeSave = false;
+        }
 
         return this.save(saveOptions, cb);
     };
@@ -355,21 +355,25 @@ module.exports = function (schema, options) {
         return this.delete(conditions, params, callback);
     };
 
-    schema.methods.restore = function (callback, params = {}) {
+    schema.methods.restore = function ( params = {}, callback) {
+        if (typeof params === 'function') {
+            cb = params;
+            params = {};
+        }
+
         this.deleted = false;
         this.deletedAt = undefined;
         this.deletedBy = undefined;
         this.deletedId = undefined;
 
-        const options = {};
+        var saveOptions = {};
         if (params.session) {
-            options.session = params.session;
+            saveOptions.session = params.session;
         }
 
-        const saveOptions = { 
-            ...options, 
-            validateBeforeSave: params.validateBeforeRestore === true
-        };
+        if (options.validateBeforeRestore === false) {
+            saveOptions.validateBeforeSave = false;
+        }
 
         return this.save(saveOptions, callback);
     };
@@ -389,11 +393,11 @@ module.exports = function (schema, options) {
             }
         };
         
-        const options = {};
+        const saveOptions = {};
         if (params.session) {
-            options.session = params.session;
+            saveOptions.session = params.session;
         }
 
-        return updateDocumentsByQuery(this, conditions, doc, options, callback);
+        return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);
     };
 };
