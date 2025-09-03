@@ -2076,14 +2076,6 @@ describe("aggregate methods: { overrideMethods: ['aggregate'] }", function () {
         }
     });
 
-    it("aggregateWithDeleted([{$project : {name : 1} }]) -> should return deleted documents", async function () {
-        try {
-            const documents = await TestModel.aggregateWithDeleted([
-                {
-                    $project : { name : 1 }
-                }
-            ]);
-
     it("findWithDeleted() -> should return 3 documents", async function () {
         try {
             const documents = await TestModel.findWithDeleted();
