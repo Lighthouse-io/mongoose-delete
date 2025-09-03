@@ -2076,14 +2076,19 @@ describe("aggregate methods: { overrideMethods: ['aggregate'] }", function () {
         }
     });
 
-    // it("findWithDeleted() -> should return 3 documents", async function () {
-    //     try {
-    //         const documents = await TestModel.findWithDeleted();
-    //         documents.length.should.equal(3);
-    //     } catch (err) {
-    //         should.not.exist(err);
-    //     }
-    // });
+    it("aggregateWithDeleted([{$project : {name : 1} }]) -> should return deleted documents", async function () {
+        try {
+            const documents = await TestModel.aggregateWithDeleted([
+                {
+                    $project : { name : 1 }
+                }
+            ]);
+
+            documents.length.should.equal(3);
+        } catch (err) {
+            should.not.exist(err);
+        }
+    });
 
     it("aggregateWithDeleted([{$project : {name : 1} }]) -> should return deleted documents (pipeline)", async function () {
         try {
