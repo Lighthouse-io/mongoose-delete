@@ -1776,7 +1776,7 @@ describe("delete multiple documents", function () {
     });
 });
 
-describe("restore multiple documents bbb", function () {
+describe("restore multiple documents", function () {
     var TestSchema = new Schema({name: String, side: Number}, {collection: 'mongoose_restore_test'});
     TestSchema.plugin(mongoose_delete, {overrideMethods: 'all', deletedAt: true, deletedBy: true});
     var TestModel = mongoose.model('Test15', TestSchema);
