@@ -285,6 +285,11 @@ module.exports = function (schema, options) {
             this.deletedId = params.deletedId
         }
 
+        const saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
+        }
+
         if(options.validateBeforeDelete === false) {
             saveOptions.validateBeforeSave = false;
         }
@@ -319,7 +324,12 @@ module.exports = function (schema, options) {
             doc.deletedId = params.deletedId 
         }
 
-        return updateDocumentsByQuery(this, conditions, doc, callback);
+        const saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
+        }
+
+        return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);
     };
 
     schema.statics.deleteById =  function (id, params = {}, callback) {
