@@ -285,14 +285,6 @@ module.exports = function (schema, options) {
             this.deletedId = params.deletedId
         }
 
-        if (schema.path('deletedId')) {
-            this.deletedId = params.deletedId
-        }
-
-        if (options.validateBeforeDelete === false) {
-            return this.save({ validateBeforeSave: false }, cb);
-        }
-
         if(options.validateBeforeDelete === false) {
             saveOptions.validateBeforeSave = false;
         }
@@ -326,11 +318,6 @@ module.exports = function (schema, options) {
         if (schema.path('deletedId')) {
             doc.deletedId = params.deletedId 
         }
-
-        if (schema.path('deletedId')) {
-            doc.deletedId = params.deletedId 
-        }
-
 
         return updateDocumentsByQuery(this, conditions, doc, callback);
     };
