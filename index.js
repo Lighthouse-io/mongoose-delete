@@ -87,19 +87,19 @@ module.exports = function (schema, options) {
     var mainUpdateMethod = mongooseMajorVersion < 5 ? 'update' : 'updateMany';
     var mainUpdateWithDeletedMethod = mainUpdateMethod + 'WithDeleted';
 
-    function updateDocumentsByQuery(schema, conditions, updateQuery, options, callback) {
-        if (typeof options === 'function') {
-            callback = options;
-            options = { multi: true };
-        } else if (!options) {
-            options = { multi: true };
+    function updateDocumentsByQuery(schema, conditions, updateQuery, queryOptions, callback) {
+        if (typeof queryOptions === 'function') {
+            callback = queryOptions;
+            queryOptions = { multi: true };
+        } else if (!queryOptions) {
+            queryOptions = { multi: true };
         } else {
-            options = { ...options, multi: true };
+            queryOptions = { ...queryOptions, multi: true };
         }
         if (schema[mainUpdateWithDeletedMethod]) {
-            return schema[mainUpdateWithDeletedMethod](conditions, updateQuery, options, callback);
+            return schema[mainUpdateWithDeletedMethod](conditions, updateQuery, queryOptions, callback);
         } else {
-            return schema[mainUpdateMethod](conditions, updateQuery, options, callback);
+            return schema[mainUpdateMethod](conditions, updateQuery, queryOptions, callback);
         }
     }
 
@@ -329,6 +329,10 @@ module.exports = function (schema, options) {
             saveOptions.session = params.session;
         }
 
+        if (options.validateBeforeDelete === false) {
+            saveOptions.validateBeforeSave = false;
+        }
+
         return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);
     };
 
@@ -352,7 +356,7 @@ module.exports = function (schema, options) {
         return this.delete(conditions, params, callback);
     };
 
-    schema.methods.restore = function ( params = {}, callback) {
+    schema.methods.restore = function (params = {}, callback) {
         if (typeof params === 'function') {
             cb = params;
             params = {};
@@ -393,6 +397,10 @@ module.exports = function (schema, options) {
         const saveOptions = {};
         if (params.session) {
             saveOptions.session = params.session;
+        }
+
+        if (options.validateBeforeRestore === false) {
+            saveOptions.validateBeforeSave = false;
         }
 
         return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);

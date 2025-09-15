@@ -718,7 +718,7 @@ describe("mongoose_delete with session management", function () {
   const userId = getNewObjectId("53da93b16b4a6670076b16bf");
   const actionId = getNewObjectId("53da93b16b4a6670076b16c0");
 
-  it("delete() -> should support transactions with session parameter", async function () {
+  it("delete() -> should support transaction rollbacks with session parameter", async function () {
     if (mongooseMajorVersion < 5) {
       // Skip test for older mongoose versions without session support
       return this.skip();
@@ -794,7 +794,7 @@ describe("mongoose_delete with session management", function () {
     }
   });
 
-  it("delete() with multiple documents -> should support transactions with session parameter", async function () {
+  it("delete() with multiple documents -> should support transaction rollbacks", async function () {
     if (mongooseMajorVersion < 5) {
       return this.skip();
     }
@@ -804,8 +804,8 @@ describe("mongoose_delete with session management", function () {
       session.startTransaction();
       
       // Delete multiple documents with session
-      const result = await TestModel.delete(
-        { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
+      const result1 = await TestModel.delete(
+        { name: 'Anakin Skywalker' }, 
         { 
           deletedBy: userId, 
           session: session
@@ -813,8 +813,19 @@ describe("mongoose_delete with session management", function () {
       );
       
       // Verify operation was successful
-      expect(result).to.be.mongoose_ok();
-      expect(result).to.be.mongoose_count(2);
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.delete(
+        { name: 'Obi-Wan Kenobi' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
       
       // Count deleted docs within the transaction
       const countInTxn = await TestModel.countDocuments({ deleted: false },  { session });
@@ -902,6 +913,62 @@ describe("mongoose_delete with session management", function () {
       session.endSession();
     }
   });
+
+    it("restore() with multiple documents -> should support transaction rollbacks with session parameter", async function () {
+        if (mongooseMajorVersion < 5) {
+            return this.skip();
+        }
+            
+        const session = await mongoose.startSession();
+        try {
+            // First delete multiple documents
+            await TestModel.delete({ name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } });
+                    
+            // Verify documents are deleted
+            const deletedCount = await TestModel.countDocumentsDeleted({ 
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            deletedCount.should.equal(2);
+                    
+            session.startTransaction();
+                    
+            // Restore multiple documents with session
+            const result = await TestModel.restore(
+                { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
+                { session }
+            );
+                    
+            // Verify operation was successful within transaction
+            expect(result).to.be.mongoose_ok();
+            expect(result).to.be.mongoose_count(2);
+                    
+            // Verify documents appear restored within the transaction
+            const countInTxn = await TestModel.countDocuments(
+                { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
+                { session }
+            );
+            countInTxn.should.equal(2);
+                    
+            // Abort transaction - restores should be rolled back
+            await session.abortTransaction();
+                    
+            // Verify documents remain deleted after rollback
+            const stillDeletedCount = await TestModel.countDocuments({ 
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            stillDeletedCount.should.equal(0);
+                    
+            const confirmStillDeletedCount = await TestModel.countDocumentsDeleted({
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            confirmStillDeletedCount.should.equal(2);
+        } catch (err) {
+            await session.abortTransaction();
+            should.not.exist(err);
+        } finally {
+            session.endSession();
+        }
+    });
 });
 
 describe("check not overridden static methods", function () {
