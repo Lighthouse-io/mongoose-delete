@@ -794,6 +794,56 @@ describe("mongoose_delete with session management", function () {
     }
   });
 
+  it("delete() with multiple documents -> should support transaction commits", async function () {
+    if (mongooseMajorVersion < 5) {
+      return this.skip();
+    }
+    
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      
+      // Delete multiple documents with session
+      const result1 = await TestModel.delete(
+        { name: 'Anakin Skywalker' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+      
+      // Verify operation was successful
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.delete(
+        { name: 'Obi-Wan Kenobi' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
+      
+      // Count deleted docs within the transaction
+      const countInTxn = await TestModel.countDocuments({ deleted: false },  { session });
+      countInTxn.should.equal(1); // Only Yoda remains
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      // Verify documents were deleted after commit
+      const count = await TestModel.countDocuments();
+      count.should.equal(1);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
   it("delete() with multiple documents -> should support transaction rollbacks", async function () {
     if (mongooseMajorVersion < 5) {
       return this.skip();
