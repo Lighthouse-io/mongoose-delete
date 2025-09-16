@@ -358,7 +358,7 @@ module.exports = function (schema, options) {
 
     schema.methods.restore = function (params = {}, callback) {
         if (typeof params === 'function') {
-            cb = params;
+            callback = params;
             params = {};
         }
 
