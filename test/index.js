@@ -46,7 +46,7 @@ chai.use(function (_chai, utils) {
 });
 
 before(async function () {
-    await mongoose.connect(process.env.MONGOOSE_TEST_URI || 'mongodb://localhost/test');
+    await mongoose.connect(process.env.MONGOOSE_TEST_URI || 'mongodb://localhost/test?directConnection=true');
 });
 
 after(async function () {
@@ -694,6 +694,322 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
             should.not.exist(success.deletedId);
         } catch (err) {
             should.not.exist(err);
+        }
+    });
+});
+
+describe("mongoose_delete with session management", function () {
+  if (mongooseMajorVersion < 5) {
+    // Skip test for older mongoose versions without session support
+    return this.skip();
+  }
+  var TestSchema = new Schema({ name: String }, { collection: 'mongoose_delete_test_sessions' });
+  TestSchema.plugin(mongoose_delete, { deletedAt: true, deletedBy: true, deletedId: true, overrideMethods:'all' });
+  var TestModel = mongoose.model('TestSession', TestSchema);
+
+  beforeEach(async function () {
+    await TestModel.create([
+      { name: 'Anakin Skywalker' },
+      { name: 'Obi-Wan Kenobi' },
+      { name: 'Yoda' }
+    ]);
+  });
+
+  afterEach(async function () {
+    await mongoose.connection.db.dropCollection("mongoose_delete_test_sessions");
+  });
+
+  const userId = getNewObjectId("53da93b16b4a6670076b16bf");
+  const actionId = getNewObjectId("53da93b16b4a6670076b16c0");
+
+  it("delete() -> should support transaction rollbacks with session parameter", async function () {
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      
+      const doc = await TestModel.findOne({ name: 'Anakin Skywalker' });
+      const deletedDoc = await doc.delete({ 
+        deletedBy: userId, 
+        deletedId: actionId,
+        session: session 
+      });
+      
+      // Verify document was marked deleted within the transaction
+      deletedDoc.deleted.should.equal(true);
+      deletedDoc.deletedBy.toString().should.equal(userId.toString());
+      deletedDoc.deletedId.toString().should.equal(actionId.toString());
+      should.exist(deletedDoc.deletedAt);
+      
+      // Find the document within the transaction to verify it's deleted
+      const foundInTxn = await TestModel.findWithDeleted({ name: 'Anakin Skywalker' }, null, {session: session});
+      foundInTxn[0].deleted.should.equal(true);
+      
+      // Abort transaction - changes should be rolled back
+      await session.abortTransaction();
+      
+      // Verify document was not deleted after rollback
+      const notDeleted = await TestModel.findOne({ name: 'Anakin Skywalker' });
+      should.exist(notDeleted);
+      notDeleted.deleted.should.equal(false);
+    } catch (err) {
+      await session.abortTransaction();
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+  it("deleteById() -> should support transactions with session parameter", async function () {
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      
+      const doc = await TestModel.findOne({ name: 'Yoda' });
+      
+      // Delete by ID with session
+      const result = await TestModel.deleteById(doc._id, { 
+        deletedBy: userId,
+        session: session
+      });
+      
+      // Verify operation was successful
+      expect(result).to.be.mongoose_ok();
+      expect(result).to.be.mongoose_count(1);
+      
+      // Commit the transaction
+      await session.commitTransaction();
+      
+      // Verify document was deleted after commit
+      const deleted = await TestModel.findOneDeleted({ name: 'Yoda' });
+      deleted.deleted.should.equal(true);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+  it("delete() with multiple documents -> should support transaction commits", async function () {
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      
+      // Delete multiple documents with session
+      const result1 = await TestModel.delete(
+        { name: 'Anakin Skywalker' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+      
+      // Verify operation was successful
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.delete(
+        { name: 'Obi-Wan Kenobi' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
+      
+      // Count deleted docs within the transaction
+      const countInTxn = await TestModel.countDocuments({ deleted: false },  { session });
+      countInTxn.should.equal(1); // Only Yoda remains
+
+      // Commit transaction
+      await session.commitTransaction();
+
+      // Verify documents were deleted after commit
+      const count = await TestModel.countDocuments();
+      count.should.equal(1);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+  it("delete() with multiple documents -> should support transaction rollbacks", async function () {
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      
+      // Delete multiple documents with session
+      const result1 = await TestModel.delete(
+        { name: 'Anakin Skywalker' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+      
+      // Verify operation was successful
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.delete(
+        { name: 'Obi-Wan Kenobi' }, 
+        { 
+          deletedBy: userId, 
+          session: session
+        }
+      );
+
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
+      
+      // Count deleted docs within the transaction
+      const countInTxn = await TestModel.countDocuments({ deleted: false },  { session });
+      countInTxn.should.equal(1); // Only Yoda remains
+      
+      // Abort transaction
+      await session.abortTransaction();
+      
+      // Verify no documents were deleted after rollback
+      const count = await TestModel.countDocuments();
+      count.should.equal(3);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+  it("restore() -> should support transactions with session parameter", async function () {
+    const session = await mongoose.startSession();
+    try {  
+
+      // First delete a document
+      const doc = await TestModel.findOne({ name: 'Obi-Wan Kenobi' });
+      await doc.delete({ deletedBy: userId });
+
+      session.startTransaction();
+      
+      // Restore with session
+      const restoredDoc = await doc.restore({ session: session });
+      
+      // Verify document was restored within transaction
+      restoredDoc.deleted.should.equal(false);
+      should.not.exist(restoredDoc.deletedAt);
+      should.not.exist(restoredDoc.deletedBy);
+      
+      // Commit transaction
+      await session.commitTransaction();
+      
+      // Verify document remains restored after commit
+      const found = await TestModel.findOne({ name: 'Obi-Wan Kenobi' });
+      should.exist(found);
+      found.deleted.should.equal(false);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+  it("restore() with multiple documents -> should support transactions with session parameter", async function () {
+    const session = await mongoose.startSession();
+    try {
+      // First delete multiple documents
+      await TestModel.delete({ name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } });
+      session.startTransaction();
+      
+      // Restore multiple documents with session
+      const result1 = await TestModel.restore(
+          { name: 'Anakin Skywalker' }, 
+          { session }
+        );
+                
+      // Verify operation was successful within transaction
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.restore(
+        { name: 'Obi-Wan Kenobi' }, 
+        { session }
+      );
+                
+      // Verify operation was successful within transaction
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
+      
+      // Commit transaction
+      await session.commitTransaction();
+      
+      // Verify documents remain restored after commit
+      const count = await TestModel.countDocuments();
+      count.should.equal(3);
+    } catch (err) {
+      should.not.exist(err);
+    } finally {
+      session.endSession();
+    }
+  });
+
+    it("restore() with multiple documents -> should support transaction rollbacks with session parameter", async function () {
+        const session = await mongoose.startSession();
+        try {
+            // First delete multiple documents
+            await TestModel.delete({ name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } });
+                    
+            // Verify documents are deleted
+            const deletedCount = await TestModel.countDocumentsDeleted({ 
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            deletedCount.should.equal(2);
+                    
+            session.startTransaction();
+                    
+            // Restore multiple documents with session
+            const result1 = await TestModel.restore(
+                { name: 'Anakin Skywalker' }, 
+                { session }
+            );
+                    
+            // Verify operation was successful within transaction
+            expect(result1).to.be.mongoose_ok();
+            expect(result1).to.be.mongoose_count(1);
+
+            const result2 = await TestModel.restore(
+                { name: 'Obi-Wan Kenobi' }, 
+                { session }
+            );
+                    
+            // Verify operation was successful within transaction
+            expect(result2).to.be.mongoose_ok();
+            expect(result2).to.be.mongoose_count(1);
+
+            // Verify documents appear restored within the transaction
+            const countInTxn = await TestModel.countDocuments(
+                { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
+                { session }
+            );
+            countInTxn.should.equal(2);
+                    
+            // Abort transaction - restores should be rolled back
+            await session.abortTransaction();
+                    
+            // Verify documents remain deleted after rollback
+            const stillDeletedCount = await TestModel.countDocuments({ 
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            stillDeletedCount.should.equal(0);
+                    
+            const confirmStillDeletedCount = await TestModel.countDocumentsDeleted({
+                name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] }
+            });
+            confirmStillDeletedCount.should.equal(2);
+        } catch (err) {
+            await session.abortTransaction();
+            should.not.exist(err);
+        } finally {
+            session.endSession();
         }
     });
 });

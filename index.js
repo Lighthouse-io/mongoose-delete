@@ -87,11 +87,19 @@ module.exports = function (schema, options) {
     var mainUpdateMethod = mongooseMajorVersion < 5 ? 'update' : 'updateMany';
     var mainUpdateWithDeletedMethod = mainUpdateMethod + 'WithDeleted';
 
-    function updateDocumentsByQuery(schema, conditions, updateQuery, callback) {
-        if (schema[mainUpdateWithDeletedMethod]) {
-            return schema[mainUpdateWithDeletedMethod](conditions, updateQuery, { multi: true }, callback);
+    function updateDocumentsByQuery(schema, conditions, updateQuery, queryOptions, callback) {
+        if (typeof queryOptions === 'function') {
+            callback = queryOptions;
+            queryOptions = { multi: true };
+        } else if (!queryOptions) {
+            queryOptions = { multi: true };
         } else {
-            return schema[mainUpdateMethod](conditions, updateQuery, { multi: true }, callback);
+            queryOptions = { ...queryOptions, multi: true };
+        }
+        if (schema[mainUpdateWithDeletedMethod]) {
+            return schema[mainUpdateWithDeletedMethod](conditions, updateQuery, queryOptions, callback);
+        } else {
+            return schema[mainUpdateMethod](conditions, updateQuery, queryOptions, callback);
         }
     }
 
@@ -190,16 +198,33 @@ module.exports = function (schema, options) {
                     schema.statics[method + 'Deleted'] = function () {
                         var args = [];
                         Array.prototype.push.apply(args, arguments);
+                        var session;
+                        var lastArg = arguments[arguments.length - 1];
+                        if (lastArg && typeof lastArg === 'object' && lastArg.session) {
+                            session = lastArg.session;
+                        }
                         var match = { $match : { deleted : {'$ne': false } } };
                         arguments.length ? args[0].unshift(match) : args.push([match]);
+                         // Pass the session in the options if present
+                        if (session) {
+                            return Model[method].apply(this, args).session(session);
+                        }
                         return Model[method].apply(this, args);
                     };
 
                     schema.statics[method + 'WithDeleted'] = function () {
                         var args = [];
                         Array.prototype.push.apply(args, arguments);
+                        var session;
+                        var lastArg = arguments[arguments.length - 1];
+                        if (lastArg && typeof lastArg === 'object' && lastArg.session) {
+                            session = lastArg.session;
+                        }
                         var match = { $match : { showAllDocuments : 'true' } };
                         arguments.length ? args[0].unshift(match) : args.push([match]);
+                        if (session) {
+                            return Model[method].apply(this, args).session(session);
+                        }
                         return Model[method].apply(this, args);
                     };
                 } else {
@@ -211,7 +236,7 @@ module.exports = function (schema, options) {
                         } else {
                             args[0].deleted = false;
                         }
-
+                        
                         return Model[method].apply(this, args);
                     };
 
@@ -260,11 +285,16 @@ module.exports = function (schema, options) {
             this.deletedId = params.deletedId
         }
 
-        if (options.validateBeforeDelete === false) {
-            return this.save({ validateBeforeSave: false }, cb);
+        const saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
         }
 
-        return this.save(cb);
+        if(options.validateBeforeDelete === false) {
+            saveOptions.validateBeforeSave = false;
+        }
+
+        return this.save(saveOptions, cb);
     };
 
     schema.statics.delete =  function (conditions, params = {}, callback) {
@@ -294,10 +324,26 @@ module.exports = function (schema, options) {
             doc.deletedId = params.deletedId 
         }
 
-        return updateDocumentsByQuery(this, conditions, doc, callback);
+        const saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
+        }
+
+        if (options.validateBeforeDelete === false) {
+            saveOptions.validateBeforeSave = false;
+        }
+
+        return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);
     };
 
     schema.statics.deleteById =  function (id, params = {}, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = {};
+        } else if (typeof params === 'string' || params instanceof mongoose.Types.ObjectId) {
+            params = { deletedBy: params };
+        }
+        
         if (arguments.length === 0 || typeof id === 'function') {
             var msg = 'First argument is mandatory and must not be a function.';
             throw new TypeError(msg);
@@ -310,20 +356,30 @@ module.exports = function (schema, options) {
         return this.delete(conditions, params, callback);
     };
 
-    schema.methods.restore = function (callback) {
+    schema.methods.restore = function (params = {}, callback) {
+        if (typeof params === 'function') {
+            callback = params;
+            params = {};
+        }
+
         this.deleted = false;
         this.deletedAt = undefined;
         this.deletedBy = undefined;
         this.deletedId = undefined;
 
-        if (options.validateBeforeRestore === false) {
-            return this.save({ validateBeforeSave: false }, callback);
+        var saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
         }
 
-        return this.save(callback);
+        if (options.validateBeforeRestore === false) {
+            saveOptions.validateBeforeSave = false;
+        }
+
+        return this.save(saveOptions, callback);
     };
 
-    schema.statics.restore =  function (conditions, callback) {
+    schema.statics.restore =  function (conditions, params = {}, callback) {
         if (typeof conditions === 'function') {
             callback = conditions;
             conditions = {};
@@ -337,7 +393,16 @@ module.exports = function (schema, options) {
                 deletedId: true,
             }
         };
+        
+        const saveOptions = {};
+        if (params.session) {
+            saveOptions.session = params.session;
+        }
 
-        return updateDocumentsByQuery(this, conditions, doc, callback);
+        if (options.validateBeforeRestore === false) {
+            saveOptions.validateBeforeSave = false;
+        }
+
+        return updateDocumentsByQuery(this, conditions, doc, saveOptions, callback);
     };
 };
