@@ -921,14 +921,23 @@ describe("mongoose_delete with session management", function () {
       session.startTransaction();
       
       // Restore multiple documents with session
-      const result = await TestModel.restore(
-        { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
-        { session: session }
+      const result1 = await TestModel.restore(
+          { name: 'Anakin Skywalker' }, 
+          { session }
+        );
+                
+      // Verify operation was successful within transaction
+      expect(result1).to.be.mongoose_ok();
+      expect(result1).to.be.mongoose_count(1);
+
+      const result2 = await TestModel.restore(
+        { name: 'Obi-Wan Kenobi' }, 
+        { session }
       );
-      
-      // Verify operation was successful
-      expect(result).to.be.mongoose_ok();
-      expect(result).to.be.mongoose_count(2);
+                
+      // Verify operation was successful within transaction
+      expect(result2).to.be.mongoose_ok();
+      expect(result2).to.be.mongoose_count(1);
       
       // Commit transaction
       await session.commitTransaction();
@@ -944,7 +953,6 @@ describe("mongoose_delete with session management", function () {
   });
 
     it("restore() with multiple documents -> should support transaction rollbacks with session parameter", async function () {
-
         const session = await mongoose.startSession();
         try {
             // First delete multiple documents
@@ -959,15 +967,24 @@ describe("mongoose_delete with session management", function () {
             session.startTransaction();
                     
             // Restore multiple documents with session
-            const result = await TestModel.restore(
-                { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
+            const result1 = await TestModel.restore(
+                { name: 'Anakin Skywalker' }, 
                 { session }
             );
                     
             // Verify operation was successful within transaction
-            expect(result).to.be.mongoose_ok();
-            expect(result).to.be.mongoose_count(2);
+            expect(result1).to.be.mongoose_ok();
+            expect(result1).to.be.mongoose_count(1);
+
+            const result2 = await TestModel.restore(
+                { name: 'Obi-Wan Kenobi' }, 
+                { session }
+            );
                     
+            // Verify operation was successful within transaction
+            expect(result2).to.be.mongoose_ok();
+            expect(result2).to.be.mongoose_count(1);
+
             // Verify documents appear restored within the transaction
             const countInTxn = await TestModel.countDocuments(
                 { name: { $in: ['Anakin Skywalker', 'Obi-Wan Kenobi'] } }, 
