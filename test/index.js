@@ -699,6 +699,10 @@ describe("mongoose_delete with options: { deletedId : true, deletedIdType: Strin
 });
 
 describe("mongoose_delete with session management", function () {
+  if (mongooseMajorVersion < 5) {
+    // Skip test for older mongoose versions without session support
+    return this.skip();
+  }
   var TestSchema = new Schema({ name: String }, { collection: 'mongoose_delete_test_sessions' });
   TestSchema.plugin(mongoose_delete, { deletedAt: true, deletedBy: true, deletedId: true, overrideMethods:'all' });
   var TestModel = mongoose.model('TestSession', TestSchema);
@@ -719,11 +723,6 @@ describe("mongoose_delete with session management", function () {
   const actionId = getNewObjectId("53da93b16b4a6670076b16c0");
 
   it("delete() -> should support transaction rollbacks with session parameter", async function () {
-    if (mongooseMajorVersion < 5) {
-      // Skip test for older mongoose versions without session support
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -761,10 +760,6 @@ describe("mongoose_delete with session management", function () {
   });
 
   it("deleteById() -> should support transactions with session parameter", async function () {
-    if (mongooseMajorVersion < 5) {
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -795,10 +790,6 @@ describe("mongoose_delete with session management", function () {
   });
 
   it("delete() with multiple documents -> should support transaction commits", async function () {
-    if (mongooseMajorVersion < 5) {
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -845,10 +836,6 @@ describe("mongoose_delete with session management", function () {
   });
 
   it("delete() with multiple documents -> should support transaction rollbacks", async function () {
-    if (mongooseMajorVersion < 5) {
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {
       session.startTransaction();
@@ -895,10 +882,6 @@ describe("mongoose_delete with session management", function () {
   });
 
   it("restore() -> should support transactions with session parameter", async function () {
-    if (mongooseMajorVersion < 5) {
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {  
 
@@ -931,10 +914,6 @@ describe("mongoose_delete with session management", function () {
   });
 
   it("restore() with multiple documents -> should support transactions with session parameter", async function () {
-    if (mongooseMajorVersion < 5) {
-      return this.skip();
-    }
-    
     const session = await mongoose.startSession();
     try {
       // First delete multiple documents
@@ -965,10 +944,7 @@ describe("mongoose_delete with session management", function () {
   });
 
     it("restore() with multiple documents -> should support transaction rollbacks with session parameter", async function () {
-        if (mongooseMajorVersion < 5) {
-            return this.skip();
-        }
-            
+
         const session = await mongoose.startSession();
         try {
             // First delete multiple documents
